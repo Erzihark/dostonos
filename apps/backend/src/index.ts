@@ -3,38 +3,10 @@ import cors from "cors";
 import bodyParser from "body-parser";
 import { ApolloServer } from "@apollo/server";
 import { expressMiddleware } from "@as-integrations/express5";
-import { gql } from "graphql-tag";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
-
+import { resolvers } from "./graphql/resolvers.js";
+import { typeDefs } from "./graphql/typeDefs.js";
+import { createContext } from "./utils/context.js";
 // Define GraphQL schema
-const typeDefs = gql`
-  type User {
-    id: ID!
-    name: String!
-    email: String!
-  }
-
-  type Query {
-    users: [User!]!
-  }
-
-  type Mutation {
-    createUser(name: String!, email: String!): User!
-  }
-`;
-
-// Define resolvers
-const resolvers = {
-  Query: {
-    users: async () => prisma.user.findMany(),
-  },
-  Mutation: {
-    createUser: async (_: unknown, args: { name: string; email: string }) =>
-      prisma.user.create({ data: args }),
-  },
-};
 
 // Create Apollo Server
 const server = new ApolloServer({
@@ -49,9 +21,12 @@ async function main() {
 
   app.use(cors());
   app.use(bodyParser.json());
-
-  // GraphQL endpoint
-  app.use("/graphql", expressMiddleware(server));
+  app.use(
+    "/graphql",
+    expressMiddleware(server, {
+      context: createContext,
+    })
+  );
 
   const PORT = 4000;
   app.listen(PORT, () => {
